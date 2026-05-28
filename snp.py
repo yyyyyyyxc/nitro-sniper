@@ -2,7 +2,6 @@ import asyncio, aiohttp, re, random, logging, os
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
-# ========= NASTAVENÍ =========
 TOKENS_FILE = "tokens.txt"          
 PROXIES_FILE = "proxies.txt"        
 WEBHOOK_URL = ""                    
@@ -13,7 +12,7 @@ LEVENSHTEIN_THRESHOLD = 2
 MIN_ACCOUNT_AGE_DAYS = 7
 
 PHISHING_DOMAINS = set([
-    # klasické scam domény
+    
     "discord-nitro.ru", "discordgift.ru", "discord-gifts.com",
     "discord-app.net", "dlscord.com", "disc0rd.com", "d1scord.com",
     "discord-giveaway.xyz", "discordfree.com", "claim-discord.com",
@@ -21,13 +20,13 @@ PHISHING_DOMAINS = set([
     "steam-discord.com", "disord-gift.com", "discordc.com",
     "discrod.com", "discorcl.com", "discord-gift.org",
     "discord-gifts.ru", "gift-discord.com", "freerobux.com",
-    # a pár dalších pro jistotu
+    
     "bit.ly", "tinyurl.com", "ow.ly", "is.gd", "buff.ly",      
     "shorturl.at", "rb.gy", "t.co", "goo.gl", "shorte.st",
     "adf.ly", "bc.vc", "lnkd.in", "t2m.io", "cutt.ly",
 ])
 
-# ========= LOGOVÁNÍ =========
+
 logger = logging.getLogger("NitroSniper")
 logger.setLevel(logging.INFO)
 handler = RotatingFileHandler("sniper.log", maxBytes=5*1024*1024, backupCount=3)
@@ -38,13 +37,13 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(fmt)
 logger.addHandler(console_handler)
 
-# ========= OFFICIÁLNÍ DOMÉNY DISCORDU =========
+
 OFFICIAL_DOMAINS = ["discord.gift", "discord.com/gifts", "discordapp.com/gifts"]
 
-# regex na gift kódy (16–24 znaků)
+
 GIFT_REGEX = re.compile(r"https?://(?:discord\.gift|discord(?:app)?\.com/gifts?)/([a-zA-Z0-9]{16,24})")
 
-# ========= POMOCNÉ FUNKCE =========
+
 def levenshtein(a: str, b: str) -> int:
     m, n = len(a), len(b)
     dp = [[0]*(n+1) for _ in range(m+1)]
@@ -64,7 +63,7 @@ def is_typosquatting(domain: str) -> bool:
             return True
     return False
 
-# ========= NAČTENÍ TOKENŮ A PROXY =========
+
 def load_lines(filename: str):
     if not os.path.exists(filename):
         return []
@@ -80,7 +79,7 @@ if not tokens:
 
 logger.info(f"Mám {len(tokens)} tokenů, {len(proxies)} proxy, {len(PHISHING_DOMAINS)} phishing domén")
 
-# ========= RATE LIMITER =========
+
 class RateLimiter:
     def __init__(self, max_per_hour):
         self.max_per_hour = max_per_hour
@@ -100,7 +99,7 @@ class RateLimiter:
 
 limiter = RateLimiter(MAX_REDEEMS_PER_HOUR)
 
-# ========= POKUS O UPLATNĚNÍ KÓDU =========
+
 async def redeem_code(session: aiohttp.ClientSession, token: str, code: str) -> bool:
     headers = {
         "Authorization": token,
@@ -133,25 +132,25 @@ async def redeem_code(session: aiohttp.ClientSession, token: str, code: str) -> 
         logger.error(f"Síťová chyba: {e}")
         return False
 
-# ========= ZPRACOVÁNÍ PŘÍCHOZÍ ZPRÁVY =========
+
 async def process_message(session: aiohttp.ClientSession, token: str, content: str, author_info: str):
-    # 1) zkracovače URL ignorujeme vždy
+   
     if re.search(r"https?://(?:bit\.ly|tinyurl\.com|ow\.ly|is\.gd|buff\.ly|shorturl\.at|rb\.gy|t\.co|goo\.gl|shorte\.st|adf\.ly|bc\.vc|lnkd\.in|t2m\.io|cutt\.ly|x\.co|v\.gd|zee\.gl|short\.gy|rotf\.lol|href\.li)", content):
         logger.debug(f"Zkracovač URL ignorován: {content[:50]}")
         return
 
-    # 2) typosquatting
+    
     if is_typosquatting(content):
         logger.warning(f"Typosquatting: {content[:50]}")
         return
 
-    # 3) známé phishing domény
+    
     for dom in PHISHING_DOMAINS:
         if dom in content.lower():
             logger.warning(f"Phishing doména {dom} v: {content[:50]}")
             return
 
-    # 4) hledání oficiálních gift kódů
+    
     for match in GIFT_REGEX.finditer(content):
         code = match.group(1)
         logger.info(f"Nalezen kód: {code} od {author_info}")
@@ -176,7 +175,7 @@ async def notify_webhook(session: aiohttp.ClientSession, code: str, author: str)
     except Exception as e:
         logger.error(f"Webhook selhal: {e}")
 
-# ========= DISCORD BOT (SELF‑BOT) =========
+
 import discord
 from discord.ext import commands
 
@@ -198,7 +197,7 @@ class NitroSniperBot(commands.Bot):
         await process_message(self.session, self.token, message.content,
                               f"{message.author.name}#{message.author.discriminator}")
 
-# ========= HLAVNÍ SMYČKA =========
+
 async def main():
     session = aiohttp.ClientSession()
     tasks = []
